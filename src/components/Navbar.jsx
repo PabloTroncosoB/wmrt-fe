@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Truck, Settings, Calendar, User, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Truck, Settings, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
-import { useCustomer } from '../context/CustomerContext';
 
 export default function Navbar() {
   const location = useLocation();
-  const { customer } = useCustomer();
   const [backendStatus, setBackendStatus] = useState('checking'); // 'connected', 'error', 'checking'
 
   const checkApi = async () => {
@@ -26,83 +24,82 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo y título */}
-          <div className="flex items-center space-x-3">
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                <Truck className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="font-bold text-lg text-slate-900 tracking-tight block">
-                  WMRT <span className="text-blue-600">Dispatch</span>
-                </span>
-                <span className="text-xs text-slate-500 font-medium hidden sm:block">
-                  Sistema de Reserva de Ventanas de Despacho
-                </span>
-              </div>
-            </Link>
-          </div>
+          <Link to="/" className="flex items-center space-x-2.5 group">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#0071dc] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
+              <Truck className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div>
+              <span className="font-bold text-base sm:text-lg text-slate-900 tracking-tight block leading-tight">
+                WMRT <span className="text-[#0071dc]">Dispatch</span>
+              </span>
+              <span className="text-[10px] text-slate-500 font-medium hidden sm:block">
+                Ventanas de Despacho
+              </span>
+            </div>
+          </Link>
 
           {/* Navegación y Acciones */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Status backend badge */}
-            <div
+            <button
+              type="button"
               onClick={checkApi}
               title="Click para re-comprobar conexión con la API en http://localhost:8080"
-              className={`cursor-pointer px-2.5 py-1 rounded-full text-xs font-medium flex items-center space-x-1.5 transition-colors ${
+              className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-full text-[11px] font-medium flex items-center space-x-1.5 transition-colors cursor-pointer ${
                 backendStatus === 'connected'
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : backendStatus === 'checking'
                   ? 'bg-slate-100 text-slate-600 border border-slate-200'
-                  : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
               }`}
             >
               {backendStatus === 'connected' ? (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="hidden md:inline">API Conectada</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="hidden sm:inline">Online</span>
                 </>
               ) : backendStatus === 'checking' ? (
                 <>
                   <RefreshCw className="w-3 h-3 animate-spin text-slate-500" />
-                  <span className="hidden md:inline">Verificando API...</span>
+                  <span className="hidden sm:inline">Verificando</span>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                  <span className="hidden md:inline">API Offline (8080)</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span className="hidden sm:inline">Modo Demo</span>
                 </>
               )}
-            </div>
+            </button>
 
             {/* Enlace a Reserva (Página Principal) */}
             <Link
               to="/"
-              className={`px-3.5 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition-all ${
+              className={`px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
                 location.pathname === '/'
-                  ? 'bg-blue-50 text-blue-700 font-semibold'
+                  ? 'bg-blue-50 text-[#0071dc]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Calendar className="w-4 h-4" />
-              <span>Reservar Despacho</span>
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Reserva</span>
             </Link>
 
             {/* Botón de Settings (Página de Datos de Cliente) */}
             <Link
               to="/settings"
-              className={`px-3.5 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition-all border ${
+              className={`p-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-all border ${
                 location.pathname === '/settings'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900 shadow-sm'
+                  ? 'bg-[#0071dc] text-white border-[#0071dc] shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-2xs'
               }`}
               title="Configurar datos de cliente y orden"
             >
-              <Settings className="w-4 h-4" />
-              <span>Settings Cliente</span>
+              <Settings className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Ajustes</span>
             </Link>
           </div>
         </div>

@@ -5,14 +5,11 @@ const CustomerContext = createContext();
 const STORAGE_KEY = 'wmrt_customer_data';
 
 const defaultCustomer = {
-  customerName: 'Juan Pérez',
-  address: 'Av. Providencia 1234, Providencia',
+  customerName: 'Pedro Perez',
+  address: 'Monjitas, 2334, La Serena, Coquimbo',
   zoneId: '2',
-  zoneName: 'Centro',
+  zoneName: 'La Serena',
   orderId: 'ORD-2026-101',
-  phone: '+56 9 8765 4321',
-  email: 'juan.perez@example.cl',
-  notes: 'Dejar en conserjería si no responde timbre',
 };
 
 export function CustomerProvider({ children }) {
@@ -20,7 +17,15 @@ export function CustomerProvider({ children }) {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return { ...defaultCustomer, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        // Filtrar solo los campos requeridos por los endpoints
+        return {
+          customerName: parsed.customerName || defaultCustomer.customerName,
+          address: parsed.address || defaultCustomer.address,
+          zoneId: parsed.zoneId || defaultCustomer.zoneId,
+          zoneName: parsed.zoneName || defaultCustomer.zoneName,
+          orderId: parsed.orderId || defaultCustomer.orderId,
+        };
       }
     } catch (e) {
       console.warn('Error reading customer from localStorage', e);
@@ -33,7 +38,13 @@ export function CustomerProvider({ children }) {
   });
 
   const saveCustomer = (newData) => {
-    const updated = { ...customer, ...newData };
+    const updated = {
+      customerName: newData.customerName ?? customer.customerName,
+      address: newData.address ?? customer.address,
+      zoneId: newData.zoneId ?? customer.zoneId,
+      zoneName: newData.zoneName ?? customer.zoneName,
+      orderId: newData.orderId ?? customer.orderId,
+    };
     setCustomer(updated);
     setHasConfigured(true);
     try {
