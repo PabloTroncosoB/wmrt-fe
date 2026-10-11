@@ -253,7 +253,9 @@ export default function ReservationPage() {
       const [year, month, day] = dateStr.split('-').map(Number);
       const dateObj = new Date(year, month - 1, day);
       const dayName = DAYS_ES[dateObj.getDay()];
-      const label = index === 0 ? 'Hoy' : dayName;
+
+      const todayRealName = DAYS_ES[new Date().getDay()];
+      const label = (index === 0 && !['Sáb', 'Dom'].includes(todayRealName)) ? 'Hoy' : dayName;
       const circleText = `${day}/${month}`;
       return { label, circleText };
     } catch (e) {
@@ -275,7 +277,7 @@ export default function ReservationPage() {
           - En Desktop (>= md): tarjeta contenida, centrada, con sombra sutil y bordes redondeados.
       */}
       <div className="max-w-xl mx-auto bg-white md:rounded-2xl md:shadow-md md:border md:border-slate-200/90 overflow-hidden">
-        
+
         {/* ============================================================== */}
         {/* SELECTOR DE ORDEN ID DIRECTO EN RESERVATION PAGE               */}
         {/* ============================================================== */}
