@@ -7,6 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
+        walmart: {
+          blue: '#0071dc',
+          hover: '#005cb8',
+          dark: '#004f9a',
+          light: '#e6f1fc',
+          border: '#bce0fd',
+        },
         brand: {
           50: '#eff6ff',
           100: '#dbeafe',
