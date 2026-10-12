@@ -12,25 +12,86 @@ import {
 import { useCustomer } from '../context/CustomerContext';
 import { api } from '../services/api';
 
-// Datos de fallback que reproducen fielmente el mockup si el backend está desconectado
-const MOCK_FALLBACK_DATES = [
-  { date: '2026-01-27', availableBlockCount: 4, full: false },
-  { date: '2026-01-28', availableBlockCount: 4, full: false },
-  { date: '2026-01-29', availableBlockCount: 4, full: false },
-  { date: '2026-01-30', availableBlockCount: 4, full: false },
-  { date: '2026-01-31', availableBlockCount: 4, full: false },
-  { date: '2026-02-01', availableBlockCount: 4, full: false },
-  { date: '2026-02-02', availableBlockCount: 0, full: true }, // Agotado
-];
+// Generar fechas dinámicas a partir de hoy para fallback si el backend no está conectado
+const generateMockDates = () => {
+  const dates = [];
+  const now = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    dates.push({
+      date: `${yyyy}-${mm}-${dd}`,
+      availableBlockCount: i === 6 ? 0 : 4,
+      full: i === 6,
+    });
+  }
+  return dates;
+};
 
+// Bloques de horario de muestra
 const MOCK_FALLBACK_BLOCKS = [
-  { id: 1, startTime: '16:00:00', endTime: '18:00:00', cost: 2990, availableSlots: 4, full: false },
-  { id: 2, startTime: '17:00:00', endTime: '19:00:00', cost: 2990, availableSlots: 3, full: false },
-  { id: 3, startTime: '18:00:00', endTime: '20:00:00', cost: 2990, availableSlots: 5, full: false },
-  { id: 4, startTime: '19:00:00', endTime: '21:00:00', cost: 2990, availableSlots: 2, full: false },
+  { id: 1, startTime: '09:00:00', endTime: '11:00:00', cost: 2990, availableSlots: 3, full: false },
+  { id: 2, startTime: '11:00:00', endTime: '13:00:00', cost: 2990, availableSlots: 2, full: false },
+  { id: 3, startTime: '13:00:00', endTime: '15:00:00', cost: 2990, availableSlots: 4, full: false },
+  { id: 4, startTime: '15:00:00', endTime: '17:00:00', cost: 2990, availableSlots: 3, full: false },
+  { id: 5, startTime: '16:00:00', endTime: '18:00:00', cost: 2990, availableSlots: 4, full: false },
+  { id: 6, startTime: '17:00:00', endTime: '19:00:00', cost: 2990, availableSlots: 3, full: false },
+  { id: 7, startTime: '18:00:00', endTime: '20:00:00', cost: 2990, availableSlots: 5, full: false },
+  { id: 8, startTime: '19:00:00', endTime: '21:00:00', cost: 2990, availableSlots: 2, full: false },
+  { id: 9, startTime: '21:00:00', endTime: '23:00:00', cost: 2990, availableSlots: 1, full: false },
 ];
 
 const DAYS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+// Valida si un bloque horario ya está en el pasado
+const isBlockInPast = (dateStr, startTime) => {
+  if (!dateStr || !startTime) return false;
+  try {
+    const cleanDate = String(dateStr).trim().replace(/\//g, '-');
+    const [year, month, day] = cleanDate.split('-').map(Number);
+    if (!year || !month || !day) return false;
+
+    let hours = 0;
+    let minutes = 0;
+
+    const str = String(startTime).trim().toLowerCase();
+    const isPM = str.includes('pm');
+    const isAM = str.includes('am');
+    const cleaned = str.replace(/[^\d:]/g, '');
+    const parts = cleaned.split(':');
+
+    hours = parseInt(parts[0], 10) || 0;
+    minutes = parseInt(parts[1], 10) || 0;
+
+    if (isPM && hours < 12) hours += 12;
+    if (isAM && hours === 12) hours = 0;
+
+    const blockDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    const now = new Date();
+
+    return blockDateTime <= now;
+  } catch (e) {
+    console.error('Error al validar horario de bloque:', e);
+    return false;
+  }
+};
+
+// Valida si una fecha completa ya pasó (ayer o antes)
+const isDateInPast = (dateStr) => {
+  if (!dateStr) return false;
+  try {
+    const cleanDate = String(dateStr).trim().replace(/\//g, '-');
+    const [year, month, day] = cleanDate.split('-').map(Number);
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+    const now = new Date();
+    return endOfDay < now;
+  } catch (e) {
+    return false;
+  }
+};
 
 export default function ReservationPage() {
   const { customer, saveCustomer, generateNewOrderId } = useCustomer();
@@ -93,49 +154,61 @@ export default function ReservationPage() {
     }
   }, [customer.zoneId, selectedDate]);
 
-  // Consulta de fechas disponibles
+  // Si el bloque seleccionado queda en el pasado, deseleccionarlo
+  useEffect(() => {
+    if (selectedBlock && isBlockInPast(selectedBlock.date || selectedDate, selectedBlock.startTime)) {
+      setSelectedBlock(null);
+    }
+  }, [selectedBlock, selectedDate]);
+
+  // Consulta de fechas disponibles (excluyendo fechas pasadas)
   const fetchDates = async (zoneId) => {
     setLoadingDates(true);
     setDateError(null);
     try {
       const dates = await api.getAvailableDates(zoneId);
-      if (dates && dates.length > 0) {
-        setAvailableDates(dates);
-        setSelectedDate(dates[0].date);
+      const filteredDates = (dates || []).filter((d) => !isDateInPast(d.date));
+      if (filteredDates && filteredDates.length > 0) {
+        setAvailableDates(filteredDates);
+        setSelectedDate(filteredDates[0].date);
       } else {
-        setAvailableDates(MOCK_FALLBACK_DATES);
-        setSelectedDate(MOCK_FALLBACK_DATES[0].date);
+        const fallbackDates = generateMockDates();
+        setAvailableDates(fallbackDates);
+        setSelectedDate(fallbackDates[0].date);
       }
     } catch (err) {
-      setAvailableDates(MOCK_FALLBACK_DATES);
-      setSelectedDate(MOCK_FALLBACK_DATES[0].date);
+      const fallbackDates = generateMockDates();
+      setAvailableDates(fallbackDates);
+      setSelectedDate(fallbackDates[0].date);
     } finally {
       setLoadingDates(false);
     }
   };
 
-  // Consulta de bloques horarios para la fecha
+  // Consulta de bloques horarios para la fecha (filtrando los que estén en el pasado)
   const fetchBlocks = async (zoneId, date) => {
     setLoadingBlocks(true);
     setBlockError(null);
     setSelectedBlock(null);
     try {
       const blocks = await api.getTimeBlocks(zoneId, date);
+      let rawBlocks = [];
       if (blocks && blocks.length > 0) {
-        setTimeBlocks(blocks);
+        rawBlocks = blocks;
       } else {
-        if (date === '2026-02-02') {
-          setTimeBlocks([]);
-        } else {
-          setTimeBlocks(MOCK_FALLBACK_BLOCKS);
-        }
+        rawBlocks = MOCK_FALLBACK_BLOCKS;
       }
+
+      // No permitir horarios en el pasado
+      const validBlocks = rawBlocks.filter(
+        (b) => !isBlockInPast(b.date || date, b.startTime)
+      );
+      setTimeBlocks(validBlocks);
     } catch (err) {
-      if (date === '2026-02-02') {
-        setTimeBlocks([]);
-      } else {
-        setTimeBlocks(MOCK_FALLBACK_BLOCKS);
-      }
+      const validBlocks = MOCK_FALLBACK_BLOCKS.filter(
+        (b) => !isBlockInPast(date, b.startTime)
+      );
+      setTimeBlocks(validBlocks);
     } finally {
       setLoadingBlocks(false);
     }
@@ -270,14 +343,16 @@ export default function ReservationPage() {
     setIsEditModalOpen(false);
   };
 
+  // Filtrado final de bloques: NUNCA mostrar bloques en el pasado
+  const visibleBlocks = timeBlocks.filter(
+    (block) => !isBlockInPast(block.date || selectedDate, block.startTime)
+  );
+
   return (
     <div className="min-h-screen bg-white md:bg-slate-50 md:py-8">
-      {/* CONTENEDOR PRINCIPAL:
-          - En Mobile (< md): ancho completo, fondo blanco, espaciado idéntico al mockup.
-          - En Desktop (>= md): tarjeta contenida, centrada, con sombra sutil y bordes redondeados.
-      */}
+      {/* CONTENEDOR PRINCIPAL */}
       <div className="max-w-xl mx-auto bg-white md:rounded-2xl md:shadow-md md:border md:border-slate-200/90 overflow-hidden">
-
+        
         {/* ============================================================== */}
         {/* SELECTOR DE ORDEN ID DIRECTO EN RESERVATION PAGE               */}
         {/* ============================================================== */}
@@ -459,18 +534,18 @@ export default function ReservationPage() {
                 <RefreshCw className="w-5 h-5 animate-spin text-blue-600 mb-2" />
                 <span>Consultando franjas horarias...</span>
               </div>
-            ) : timeBlocks.length === 0 ? (
+            ) : visibleBlocks.length === 0 ? (
               <div className="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 <Clock className="w-7 h-7 text-slate-300 mx-auto mb-1.5" />
                 <p className="text-sm font-medium text-slate-600">
                   No hay horarios disponibles para esta fecha.
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Por favor selecciona otro día en el calendario superior.
+                  Los horarios anteriores a la hora actual ya no están disponibles para despacho.
                 </p>
               </div>
             ) : (
-              timeBlocks.map((block) => {
+              visibleBlocks.map((block) => {
                 const isSelected = selectedBlock?.id === block.id;
                 const isFull = block.full || block.availableSlots <= 0;
                 const timeString = formatTimeRange(block.startTime, block.endTime);
